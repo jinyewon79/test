@@ -1,0 +1,2247 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>지구 방어 슈팅게임</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet" />
+  <style>
+    /* 기본 폰트 및 화면 스크롤/선택 제어 */
+    body {
+      font-family: 'Noto Sans KR', 'Inter', sans-serif;
+      background-color: #050814;
+      color: #f8fafc;
+      overflow-x: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* 우주 글로우 및 버튼 인터랙션 스타일 */
+    .neon-panel {
+      box-shadow: 0 0 28px rgba(56, 189, 248, 0.14), inset 0 0 18px rgba(56, 189, 248, 0.05);
+    }
+
+    .action-btn {
+      transition: transform 0.14s ease, box-shadow 0.2s ease, filter 0.2s ease, background-color 0.2s ease;
+    }
+    .action-btn:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.06);
+    }
+    .action-btn:active {
+      transform: translateY(1px) scale(0.98);
+    }
+
+    /* 캔버스 반응형 컨테이너 맞춤 */
+    #gameCanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+
+    /* 커스텀 스크롤바 */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.65);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(100, 116, 139, 0.5);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.75);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col bg-[#050814] text-slate-100">
+  <!-- 상단 헤더 바 -->
+  <header class="w-full border-b border-slate-800/80 bg-slate-950/85 backdrop-blur-md z-30">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-400 via-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-sky-500/20">
+          <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 2L15.5 9.5L22 12L15.5 14.5L12 22L8.5 14.5L2 12L8.5 9.5L12 2Z" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-base sm:text-lg font-extrabold tracking-tight text-white flex items-center gap-2">
+            <span>지구 방어 슈팅게임</span>
+            <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-400/30">브라우저 자동저장</span>
+          </h1>
+          <p class="text-[11px] sm:text-xs text-slate-400 hidden sm:block">
+            암석을 요격하고 지구를 지키세요 · 언제든 <kbd class="px-1.5 py-0.5 text-[10px] rounded bg-slate-800 border border-slate-700 text-slate-200">M</kbd> 키로 메인 이동
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-1.5 sm:gap-2.5">
+        <button
+          id="topMainBtn"
+          type="button"
+          class="action-btn px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold bg-slate-800/90 hover:bg-slate-700 text-slate-100 border border-slate-700 flex items-center gap-1.5 cursor-pointer"
+          title="메인으로 이동 (단축키: M)"
+        >
+          <span>메인으로</span>
+          <kbd class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-slate-950 text-sky-300 border border-slate-600">M</kbd>
+        </button>
+
+        <button
+          id="openRecordsModalTopBtn"
+          type="button"
+          class="action-btn px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 flex items-center gap-1.5 cursor-pointer"
+        >
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span>기록 보기 / 구글시트 내보내기</span>
+        </button>
+
+        <button
+          id="openSheetsModalTopBtn"
+          type="button"
+          class="action-btn px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-400/50 flex items-center gap-1.5 cursor-pointer"
+        >
+          <span>구글시트 연동 설정</span>
+          <span id="topSheetsBadge" class="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-900/90 text-slate-300 border border-slate-700">미설정</span>
+        </button>
+
+        <button
+          id="soundToggleBtn"
+          type="button"
+          class="action-btn p-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 cursor-pointer"
+          aria-label="사운드 켜기/끄기"
+          title="사운드 켜기/끄기"
+        >
+          <svg id="soundOnIcon" class="w-4 h-4 text-sky-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+          </svg>
+          <svg id="soundOffIcon" class="w-4 h-4 text-rose-400 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15zM17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 메인 콘텐츠 컨테이너 -->
+  <main class="flex-1 w-full max-w-7xl mx-auto p-3 sm:p-5 flex flex-col">
+    <!-- ==================== 메인 화면 (로비) ==================== -->
+    <section id="lobbyScreen" class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+      <!-- 사용자명 및 전투기 캐릭터 선택 -->
+      <div class="lg:col-span-8 bg-slate-900/75 border border-slate-800/90 rounded-3xl p-4 sm:p-6 neon-panel flex flex-col gap-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-4">
+          <div>
+            <span class="text-xs font-bold uppercase tracking-wider text-sky-400">EARTH DEFENSE HANGAR</span>
+            <h2 class="text-xl sm:text-2xl font-extrabold text-white mt-0.5">사용자명 입력 및 전투기 선택</h2>
+          </div>
+          <div class="text-xs text-slate-300 bg-slate-950/80 border border-slate-800 px-3 py-1.5 rounded-xl">
+            지구 방어 한계: <span class="text-rose-400 font-bold">3회 피격 시 종료</span>
+          </div>
+        </div>
+
+        <!-- 사용자명 입력 -->
+        <div>
+          <label for="usernameInput" class="block text-sm font-bold text-slate-200 mb-2">
+            사용자명
+          </label>
+          <div class="flex flex-col sm:flex-row gap-2.5">
+            <input
+              id="usernameInput"
+              type="text"
+              maxlength="16"
+              placeholder="예: 우주수호자, 민수 (미입력 시 '플레이어')"
+              class="flex-1 px-4 py-3 rounded-2xl bg-slate-950/90 border border-slate-700 focus:border-sky-400 focus:ring-2 focus:ring-sky-500/25 outline-none text-white placeholder-slate-500 text-sm sm:text-base transition"
+            />
+            <div class="flex items-center gap-2 text-xs text-slate-400 px-3.5 py-2.5 rounded-2xl bg-slate-950/70 border border-slate-800">
+              <span>현재 조종사:</span>
+              <span id="previewUsernameBadge" class="font-bold text-sky-300">플레이어</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 캐릭터(전투기) 3종 선택 그리드 -->
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm font-bold text-slate-200">전투기 캐릭터 선택 (3종)</span>
+            <span class="text-xs text-slate-400">색상·모양·기동/화력 특성이 다릅니다</span>
+          </div>
+          <div id="characterGrid" class="grid grid-cols-1 md:grid-cols-3 gap-3.5"></div>
+        </div>
+
+        <!-- 규칙 요약 -->
+        <div class="bg-slate-950/70 border border-slate-800/90 rounded-2xl p-4">
+          <h3 class="text-xs sm:text-sm font-bold text-sky-300 mb-2">게임 규칙 및 조작법</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-300 leading-relaxed">
+            <div>• <strong>이동:</strong> 방향키 또는 <kbd class="px-1 py-0.5 rounded bg-slate-800 text-[10px]">WASD</kbd> (화면 밖 이탈 방지), 마우스/터치 드래그 지원</div>
+            <div>• <strong>발사:</strong> <kbd class="px-1 py-0.5 rounded bg-slate-800 text-[10px]">Space</kbd>, 캔버스 클릭, 또는 연사/자동사격 버튼</div>
+            <div>• <strong>충돌 &amp; 지구 방어:</strong> 전투기가 암석과 부딪히면 즉시 종료, 암석이 지구로 <strong>3번</strong> 떨어져도 종료</div>
+            <div>• <strong>난이도 &amp; 기록:</strong> 점수가 오를수록 암석이 많아지고 빨라지며, 종료 시 브라우저에 자동 저장됩니다</div>
+          </div>
+        </div>
+
+        <!-- 시작 및 CSV 다운로드 버튼 -->
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1">
+          <button
+            id="startGameBtn"
+            type="button"
+            class="action-btn flex-1 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-extrabold text-base sm:text-lg shadow-lg shadow-sky-600/30 flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+            <span>게임 시작</span>
+          </button>
+
+          <button
+            id="lobbySheetsSettingsBtn"
+            type="button"
+            class="action-btn py-3.5 px-5 rounded-2xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-200 border border-amber-400/45 font-bold text-sm flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <span>구글시트 웹 앱 URL 설정</span>
+          </button>
+
+          <button
+            id="lobbyExportCsvBtn"
+            type="button"
+            class="action-btn py-3.5 px-5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-emerald-500/35 font-bold text-sm flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <span>구글시트용 CSV 다운로드</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 우측 성적 기록 패널 -->
+      <aside class="lg:col-span-4 bg-slate-900/75 border border-slate-800/90 rounded-3xl p-4 sm:p-5 flex flex-col gap-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div>
+            <h3 class="text-base font-extrabold text-white">자동 저장 성적 기록</h3>
+            <p class="text-xs text-slate-400">게임 종료 시 한 판당 1회 자동 저장</p>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button
+              id="openRecordsModalAsideBtn"
+              type="button"
+              class="text-xs text-emerald-300 hover:text-emerald-200 px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 transition cursor-pointer"
+            >
+              표 보기
+            </button>
+            <button
+              id="clearScoresBtn"
+              type="button"
+              class="text-xs text-slate-400 hover:text-rose-400 px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-800 transition cursor-pointer"
+            >
+              기록 삭제
+            </button>
+          </div>
+        </div>
+
+        <div class="p-3.5 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-xs flex flex-col gap-1.5">
+          <div class="flex items-center justify-between font-bold text-emerald-300">
+            <span>✓ 별도 서버/스크립트 설정 불필요</span>
+            <a
+              href="https://sheets.google.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="underline text-sky-300 hover:text-sky-200"
+            >
+              구글 시트 열기 ↗
+            </a>
+          </div>
+          <p class="text-slate-300 leading-relaxed">
+            기록이 브라우저에 안전하게 저장됩니다. 구글 시트에서 보려면 <strong>CSV 다운로드</strong> 후 구글 시트에서 <strong>파일 &gt; 가져오기</strong>를 누르세요.
+          </p>
+        </div>
+
+        <div id="scoreboardList" class="flex flex-col gap-2.5 max-h-[420px] overflow-y-auto pr-1"></div>
+      </aside>
+    </section>
+
+    <!-- ==================== 게임 플레이 화면 ==================== -->
+    <section id="gameScreen" class="hidden flex-1 flex flex-col gap-3">
+      <!-- 상단 HUD -->
+      <div class="bg-slate-900/85 border border-slate-800 rounded-2xl px-3 sm:px-5 py-2.5 flex flex-wrap items-center justify-between gap-2">
+        <div class="flex flex-wrap items-center gap-3 sm:gap-5">
+          <div>
+            <div class="text-[10px] uppercase tracking-wider text-slate-400">PLAYER / SHIP</div>
+            <div class="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5">
+              <span id="hudPlayerName" class="text-sky-300">플레이어</span>
+              <span class="text-slate-600">·</span>
+              <span id="hudShipName" class="text-indigo-300">팔콘 MK-1</span>
+            </div>
+          </div>
+
+          <div class="h-7 w-px bg-slate-800 hidden sm:block"></div>
+
+          <div>
+            <div class="text-[10px] uppercase tracking-wider text-slate-400">SCORE</div>
+            <div id="hudScore" class="text-base sm:text-xl font-black text-amber-300 tabular-nums">0</div>
+          </div>
+
+          <div>
+            <div class="text-[10px] uppercase tracking-wider text-slate-400">DESTROYED</div>
+            <div id="hudDestroyed" class="text-xs sm:text-sm font-bold text-slate-200 tabular-nums">0개</div>
+          </div>
+
+          <div>
+            <div class="text-[10px] uppercase tracking-wider text-slate-400">DIFFICULTY</div>
+            <div id="hudLevel" class="text-xs sm:text-sm font-extrabold text-emerald-300">LV.1 (보통)</div>
+          </div>
+
+          <div>
+            <div class="text-[10px] uppercase tracking-wider text-slate-400">EARTH HITS (MAX 3)</div>
+            <div id="hudEarthHits" class="flex items-center gap-1 mt-0.5"></div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button
+            id="autoFireToggleBtn"
+            type="button"
+            class="action-btn px-3 py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer"
+          >
+            자동사격: OFF
+          </button>
+
+          <button
+            id="gameMainBtn"
+            type="button"
+            class="action-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-600 flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>메인으로</span>
+            <kbd class="px-1.5 py-0.5 text-[10px] rounded bg-slate-950 text-sky-300 border border-slate-700">M</kbd>
+          </button>
+        </div>
+      </div>
+
+      <!-- 캔버스 영역 -->
+      <div class="relative flex-1 min-h-[450px] sm:min-h-[540px] w-full rounded-3xl overflow-hidden border border-slate-800 bg-[#040711] neon-panel">
+        <canvas id="gameCanvas"></canvas>
+
+        <!-- 터치/모바일 발사 버튼 -->
+        <div class="sm:hidden absolute bottom-16 right-3 z-20">
+          <button
+            id="mobileFireBtn"
+            type="button"
+            class="w-14 h-14 rounded-full bg-sky-500/85 active:bg-sky-400 text-white font-extrabold text-xs shadow-lg border border-sky-200/50 flex items-center justify-center"
+          >
+            발사
+          </button>
+        </div>
+
+        <!-- 난이도 상승 배너 -->
+        <div
+          id="levelUpBanner"
+          class="pointer-events-none opacity-0 transition-opacity duration-300 absolute top-4 left-1/2 -translate-x-1/2 z-20 px-4 py-1.5 rounded-full bg-amber-500/20 border border-amber-400/50 backdrop-blur-md text-amber-200 text-xs sm:text-sm font-extrabold shadow-lg"
+        >
+          난이도 상승! 암석이 더 많아지고 빨라집니다!
+        </div>
+
+        <!-- 게임 오버 오버레이 -->
+        <div
+          id="gameOverOverlay"
+          class="hidden absolute inset-0 z-30 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4"
+        >
+          <div class="w-full max-w-lg bg-slate-900 border border-slate-700/90 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col gap-4">
+            <div class="text-center border-b border-slate-800 pb-4">
+              <span class="inline-block px-3 py-1 rounded-full text-xs font-extrabold bg-rose-500/15 text-rose-300 border border-rose-500/30 mb-2">
+                GAME OVER
+              </span>
+              <h2 class="text-2xl sm:text-3xl font-black text-white">게임 종료</h2>
+              <p id="gameOverReasonText" class="text-xs sm:text-sm text-rose-300 font-semibold mt-1">
+                전투기 암석 충돌
+              </p>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-center">
+              <div class="bg-slate-950/80 border border-slate-800 rounded-2xl p-3">
+                <div class="text-[11px] text-slate-400">사용자명</div>
+                <div id="goPlayerName" class="text-sm font-bold text-sky-300 truncate mt-0.5">플레이어</div>
+              </div>
+              <div class="bg-slate-950/80 border border-slate-800 rounded-2xl p-3">
+                <div class="text-[11px] text-slate-400">캐릭터</div>
+                <div id="goShipName" class="text-sm font-bold text-indigo-300 truncate mt-0.5">팔콘 MK-1</div>
+              </div>
+              <div class="bg-slate-950/80 border border-slate-800 rounded-2xl p-3">
+                <div class="text-[11px] text-slate-400">점수</div>
+                <div id="goScore" class="text-base font-black text-amber-300 mt-0.5">0</div>
+              </div>
+              <div class="bg-slate-950/80 border border-slate-800 rounded-2xl p-3">
+                <div class="text-[11px] text-slate-400">파괴한 암석</div>
+                <div id="goDestroyed" class="text-sm font-bold text-emerald-300 mt-0.5">0개</div>
+              </div>
+              <div class="bg-slate-950/80 border border-slate-800 rounded-2xl p-3">
+                <div class="text-[11px] text-slate-400">지구 피격</div>
+                <div id="goEarthHits" class="text-sm font-bold text-rose-300 mt-0.5">0 / 3회</div>
+              </div>
+              <div class="bg-slate-950/80 border border-slate-800 rounded-2xl p-3">
+                <div class="text-[11px] text-slate-400">난이도</div>
+                <div id="goLevel" class="text-sm font-extrabold text-sky-200 mt-0.5">LV.1</div>
+              </div>
+            </div>
+
+            <div id="saveStatusBox" class="p-3.5 rounded-2xl border border-emerald-500/40 bg-emerald-950/30 text-xs flex items-start gap-2.5">
+              <span class="text-base leading-none mt-0.5">💾</span>
+              <div class="flex-1">
+                <div id="saveStatusTitle" class="font-bold text-emerald-200">브라우저에 성적이 자동 저장되었습니다 (한 판당 1회 기록).</div>
+                <div id="saveStatusDetail" class="text-slate-300 mt-0.5 leading-relaxed">
+                  [기록 보기 / 구글시트 내보내기]에서 표를 확인하거나 구글 시트용 CSV 파일을 내려받을 수 있습니다.
+                </div>
+              </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-2.5 pt-1">
+              <button
+                id="restartGameBtn"
+                type="button"
+                class="action-btn flex-1 py-3 px-4 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-extrabold text-sm shadow-lg shadow-sky-600/25 cursor-pointer"
+              >
+                다시 시작
+              </button>
+              <button
+                id="gameOverMainBtn"
+                type="button"
+                class="action-btn flex-1 py-3 px-4 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-600 font-bold text-sm flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <span>메인으로</span>
+                <kbd class="px-1.5 py-0.5 text-[10px] rounded bg-slate-950 text-sky-300 border border-slate-700">M</kbd>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400 px-1">
+        <div>
+          이동: <strong class="text-slate-200">방향키 / WASD / 마우스·터치 드래그</strong> · 발사: <strong class="text-slate-200">Space / 클릭 / 버튼</strong>
+        </div>
+        <div>
+          다른 사용자가 플레이하려면 <strong class="text-sky-300">M 키</strong> 또는 <strong class="text-sky-300">메인으로</strong> 버튼을 누르세요.
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ==================== 기록 보기 / 구글시트 내보내기 모달 ==================== -->
+  <div
+    id="recordsModal"
+    class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="recordsModalTitle"
+  >
+    <div class="w-full max-w-5xl bg-slate-900 border border-slate-700 rounded-3xl p-5 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto flex flex-col gap-4">
+      <div class="flex items-start justify-between gap-3 border-b border-slate-800 pb-3.5">
+        <div>
+          <h3 id="recordsModalTitle" class="text-lg sm:text-xl font-extrabold text-white">기록 보기 / 구글시트 내보내기</h3>
+          <p class="text-xs text-slate-400 mt-0.5">
+            브라우저(localStorage)에 자동 저장된 성적 표와 구글 시트 가져오기 안내입니다.
+          </p>
+        </div>
+        <button
+          id="closeRecordsModalBtn"
+          type="button"
+          class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 cursor-pointer"
+          aria-label="닫기"
+        >
+          ✕
+        </button>
+      </div>
+
+      <!-- 구글 시트 CSV 내보내기 및 가져오기 가이드 -->
+      <div class="bg-slate-950/85 border border-slate-800 rounded-2xl p-4 flex flex-col gap-2.5 text-xs text-slate-300">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <span class="font-bold text-emerald-300">구글 시트에서 기록 보는 방법 (한글 깨짐 방지 UTF-8 BOM 포함)</span>
+          <div class="flex flex-wrap items-center gap-2">
+            <button
+              id="modalDownloadCsvBtn"
+              type="button"
+              class="action-btn px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold cursor-pointer"
+            >
+              구글시트용 CSV 다운로드
+            </button>
+            <a
+              href="https://sheets.google.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="action-btn px-3.5 py-1.5 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-400/40 font-bold"
+            >
+              구글 시트 열기 ↗
+            </a>
+          </div>
+        </div>
+        <ol class="list-decimal list-inside space-y-1 text-slate-300 leading-relaxed">
+          <li><strong>구글시트용 CSV 다운로드</strong>를 눌러 <code class="text-emerald-300">.csv</code> 파일을 저장합니다.</li>
+          <li><strong>구글 시트 열기</strong>로 새 스프레드시트를 연 뒤, 상단 메뉴에서 <strong>파일 &gt; 가져오기 &gt; 업로드</strong>를 선택합니다.</li>
+          <li>다운로드한 CSV 파일을 업로드하고 <strong>가져오기</strong>를 누르면 모든 열이 표로 불러와집니다.</li>
+        </ol>
+      </div>
+
+      <!-- 기록 전체 표 -->
+      <div class="bg-slate-950/75 border border-slate-800 rounded-2xl p-3.5 flex flex-col gap-2">
+        <div class="text-xs font-extrabold text-amber-300">📊 저장된 성적 목록 (최신순)</div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="border-b border-slate-800 text-slate-400">
+                <th class="py-2 pr-2">기록 시각</th>
+                <th class="py-2 px-2">사용자명</th>
+                <th class="py-2 px-2">캐릭터</th>
+                <th class="py-2 px-2 text-right">점수</th>
+                <th class="py-2 px-2 text-right">파괴한 암석</th>
+                <th class="py-2 px-2 text-right">지구 피격</th>
+                <th class="py-2 pl-2">종료 사유</th>
+              </tr>
+            </thead>
+            <tbody id="allScoresTableBody" class="divide-y divide-slate-800/70"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-1">
+        <button
+          id="closeRecordsModalFooterBtn"
+          type="button"
+          class="action-btn px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs sm:text-sm font-bold cursor-pointer"
+        >
+          닫기
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 구글시트 연동 설정 모달 ==================== -->
+  <div
+    id="sheetsModal"
+    class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="sheetsModalTitle"
+  >
+    <div class="w-full max-w-3xl bg-slate-900 border border-amber-400/40 rounded-3xl p-5 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto flex flex-col gap-4">
+      <div class="flex items-start justify-between gap-3 border-b border-slate-800 pb-3.5">
+        <div>
+          <span class="text-[11px] font-extrabold uppercase tracking-wider text-amber-300">GOOGLE SHEETS WEB APP SYNC</span>
+          <h3 id="sheetsModalTitle" class="text-lg sm:text-xl font-extrabold text-white mt-0.5">구글시트 연동 설정</h3>
+          <p class="text-xs text-slate-400 mt-0.5">
+            아래 입력란에 배포한 구글시트 웹 앱 URL을 붙여넣고 <strong>저장</strong>하면, 게임 종료 시 성적이 시트에 자동 전송됩니다.
+          </p>
+        </div>
+        <button
+          id="closeSheetsModalBtn"
+          type="button"
+          class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 cursor-pointer"
+          aria-label="닫기"
+        >
+          ✕
+        </button>
+      </div>
+
+      <!-- 웹 앱 URL 입력 및 제어 버튼 -->
+      <div class="bg-slate-950/85 border border-slate-800 rounded-2xl p-4 flex flex-col gap-3">
+        <label for="sheetsWebAppUrlInput" class="text-xs sm:text-sm font-extrabold text-amber-300">
+          구글시트 웹 앱 URL (https://script.google.com/macros/s/.../exec)
+        </label>
+        <input
+          id="sheetsWebAppUrlInput"
+          type="url"
+          placeholder="https://script.google.com/macros/s/AKfycb.../exec"
+          class="w-full px-4 py-3 rounded-2xl bg-slate-900 border border-slate-700 focus:border-amber-400 focus:ring-2 focus:ring-amber-500/25 outline-none text-white placeholder-slate-500 text-xs sm:text-sm transition"
+        />
+        <div class="flex flex-wrap items-center gap-2">
+          <button
+            id="saveSheetsUrlBtn"
+            type="button"
+            class="action-btn px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs sm:text-sm cursor-pointer"
+          >
+            저장
+          </button>
+          <button
+            id="testSheetsUrlBtn"
+            type="button"
+            class="action-btn px-4 py-2.5 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-400/40 font-bold text-xs sm:text-sm cursor-pointer"
+          >
+            연결 테스트
+          </button>
+          <button
+            id="resetSheetsUrlBtn"
+            type="button"
+            class="action-btn px-4 py-2.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/35 font-bold text-xs sm:text-sm cursor-pointer"
+          >
+            초기화
+          </button>
+          <span id="sheetsUrlStatusText" class="text-xs text-slate-400 ml-auto">현재 상태: 미설정</span>
+        </div>
+      </div>
+
+      <!-- Code.gs 복사 및 간단 안내 -->
+      <div class="bg-slate-950/85 border border-slate-800 rounded-2xl p-4 flex flex-col gap-2.5">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-xs font-extrabold text-sky-300">Apps Script 코드 (Code.gs)</span>
+          <button
+            id="copyCodeGsBtn"
+            type="button"
+            class="action-btn px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-emerald-500/35 font-bold text-xs cursor-pointer"
+          >
+            Code.gs 복사
+          </button>
+        </div>
+        <pre id="codeGsPreview" class="p-3 rounded-xl bg-slate-900 border border-slate-800 text-[11px] text-slate-200 overflow-x-auto leading-relaxed select-text"></pre>
+        <p class="text-[11px] text-slate-400 leading-relaxed">
+          ※ 구글시트에서 <strong>확장 프로그램 &gt; Apps Script</strong>에 위 코드를 붙여넣고 저장한 뒤, <strong>배포 &gt; 새 배포 &gt; 웹 앱</strong>(액세스 권한: <strong>모든 사용자</strong>)으로 배포해 생성된 URL을 위 입력란에 넣으세요.
+        </p>
+      </div>
+
+      <div class="flex items-center justify-end pt-1">
+        <button
+          id="closeSheetsModalFooterBtn"
+          type="button"
+          class="action-btn px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs sm:text-sm font-bold cursor-pointer"
+        >
+          닫기
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 토스트 메시지 -->
+  <div
+    id="toastMessage"
+    class="pointer-events-none opacity-0 transition-all duration-300 fixed bottom-5 right-5 z-[60] max-w-sm px-4 py-3 rounded-2xl bg-slate-900/95 border border-sky-400/50 text-white text-xs sm:text-sm font-semibold shadow-2xl"
+  ></div>
+
+  <script>
+    /**
+     * =========================================================================
+     * 지구 방어 슈팅게임 (Single-File HTML/CSS/JS)
+     * - 안전한 localStorage 래퍼, 단일 requestAnimationFrame 루프 관리,
+     *   Web Audio API 예외 안전 처리, 1판당 1회 자동 저장 및 CSV 내보내기 포함
+     * =========================================================================
+     */
+
+    const STORAGE_KEYS = {
+      SCORES: 'earth_defense_shooter_scores_v2',
+      MUTED: 'earth_defense_shooter_muted_v2',
+      USERNAME: 'earth_defense_shooter_username_v2',
+      CHARACTER: 'earth_defense_shooter_character_v2',
+      SHEETS_URL: 'earth_defense_shooter_sheets_url_v1'
+    };
+
+    const CODE_GS_TEMPLATE = `function doPost(e) {
+  try {
+    const raw = (e && e.postData && e.postData.contents) ? e.postData.contents : '{}';
+    const data = JSON.parse(raw);
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+
+    if (sheet.getLastRow() === 0) {
+      sheet.appendRow(['기록 시각', '사용자명', '캐릭터', '점수', '파괴한 암석', '지구 피격 횟수', '종료 사유']);
+    }
+
+    sheet.appendRow([
+      data.timestamp ? new Date(data.timestamp) : new Date(),
+      data.username || '플레이어',
+      data.character || '-',
+      Number(data.score || 0),
+      Number(data.destroyedCount || 0),
+      Number(data.earthHits || 0),
+      data.reason || '게임 종료'
+    ]);
+
+    return ContentService.createTextOutput(JSON.stringify({ status: 'ok' }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}`;
+
+    // 메모리 폴백 저장소 (사설 모드나 localStorage 접근 제한 시에도 정상 동작 보장)
+    const memoryStorage = new Map();
+
+    function safeStorageGet(key, fallback = '') {
+      try {
+        const val = window.localStorage.getItem(key);
+        return val !== null ? val : (memoryStorage.has(key) ? memoryStorage.get(key) : fallback);
+      } catch (err) {
+        return memoryStorage.has(key) ? memoryStorage.get(key) : fallback;
+      }
+    }
+
+    function safeStorageSet(key, value) {
+      memoryStorage.set(key, String(value));
+      try {
+        window.localStorage.setItem(key, String(value));
+      } catch (err) {
+        // 사설 모드/쿼터 제한 시에도 게임과 메모리 기록은 중단되지 않음
+      }
+    }
+
+    function safeStorageRemove(key) {
+      memoryStorage.delete(key);
+      try {
+        window.localStorage.removeItem(key);
+      } catch (err) {}
+    }
+
+    // 전투기 캐릭터 3종 정의 (색상, 모양, 특성 차별화)
+    const CHARACTERS = [
+      {
+        id: 'falcon',
+        name: '팔콘 MK-1',
+        badge: '균형형 델타기',
+        shapeType: 'delta',
+        color: '#38bdf8',
+        wingColor: '#0284c7',
+        moveSpeed: 375,
+        fireInterval: 0.21,
+        bulletSpeed: 650,
+        spread: 'single',
+        desc: '안정적인 기동력과 빠른 단일 레이저 미사일을 사용하는 표준 방어기입니다.'
+      },
+      {
+        id: 'viper',
+        name: '바이퍼 인터셉터',
+        badge: '초고속 애로우기',
+        shapeType: 'arrow',
+        color: '#34d399',
+        wingColor: '#059669',
+        moveSpeed: 495,
+        fireInterval: 0.16,
+        bulletSpeed: 750,
+        spread: 'single',
+        desc: '가장 빠른 이동 속도와 초고속 연사로 몰려오는 암석을 정밀 요격합니다.'
+      },
+      {
+        id: 'titan',
+        name: '타이탄 트윈',
+        badge: '쌍발 뱅가드기',
+        shapeType: 'twinwing',
+        color: '#f59e0b',
+        wingColor: '#b45309',
+        moveSpeed: 320,
+        fireInterval: 0.26,
+        bulletSpeed: 610,
+        spread: 'twin',
+        desc: '좌우 쌍발 미사일을 동시에 발사하여 넓은 범위의 암석을 분쇄합니다.'
+      }
+    ];
+
+    // 전역 게임 상태
+    const state = {
+      screen: 'lobby', // 'lobby' | 'game'
+      username: safeStorageGet(STORAGE_KEYS.USERNAME, ''),
+      selectedCharacterId: safeStorageGet(STORAGE_KEYS.CHARACTER, 'falcon'),
+      sheetsWebAppUrl: safeStorageGet(STORAGE_KEYS.SHEETS_URL, ''),
+      soundMuted: safeStorageGet(STORAGE_KEYS.MUTED, 'false') === 'true',
+      autoFire: false,
+
+      isGameRunning: false,
+      isGameOver: false,
+      runSaved: false, // 한 판당 1회 저장 보장 플래그
+
+      score: 0,
+      destroyedCount: 0,
+      earthHits: 0,
+      maxEarthHits: 3,
+      level: 1,
+      lastNotifiedLevel: 1,
+      gameOverReason: '',
+
+      canvasWidth: 800,
+      canvasHeight: 540,
+      player: null,
+      bullets: [],
+      asteroids: [],
+      particles: [],
+      floatingTexts: [],
+      stars: [],
+
+      fireCooldown: 0,
+      spawnTimer: 0.4,
+      screenShake: 0,
+      rafId: null,
+      lastFrameTime: 0,
+
+      keys: {
+        left: false,
+        right: false,
+        up: false,
+        down: false,
+        fire: false
+      },
+      pointerActive: false,
+      pointerX: null,
+      pointerY: null
+    };
+
+    // Web Audio API 안전 래퍼
+    const SoundFX = {
+      ctx: null,
+      getContext() {
+        if (state.soundMuted) return null;
+        try {
+          if (!this.ctx) {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextClass) return null;
+            this.ctx = new AudioContextClass();
+          }
+          if (this.ctx.state === 'suspended') {
+            this.ctx.resume().catch(() => {});
+          }
+          return this.ctx;
+        } catch (err) {
+          return null;
+        }
+      },
+      playShoot() {
+        const ctx = this.getContext();
+        if (!ctx) return;
+        try {
+          const now = ctx.currentTime;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(780, now);
+          osc.frequency.exponentialRampToValueAtTime(220, now + 0.075);
+          gain.gain.setValueAtTime(0.07, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.075);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.08);
+        } catch (err) {}
+      },
+      playExplosion(big = false) {
+        const ctx = this.getContext();
+        if (!ctx) return;
+        try {
+          const duration = big ? 0.34 : 0.17;
+          const length = Math.max(1, Math.floor(ctx.sampleRate * duration));
+          const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+          const data = buffer.getChannelData(0);
+          for (let i = 0; i < length; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 1.4);
+          }
+          const src = ctx.createBufferSource();
+          src.buffer = buffer;
+
+          const filter = ctx.createBiquadFilter();
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(big ? 500 : 850, ctx.currentTime);
+
+          const gain = ctx.createGain();
+          gain.gain.setValueAtTime(big ? 0.2 : 0.11, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+
+          src.connect(filter);
+          filter.connect(gain);
+          gain.connect(ctx.destination);
+          src.start();
+        } catch (err) {}
+      },
+      playLevelUp() {
+        const ctx = this.getContext();
+        if (!ctx) return;
+        try {
+          const freqs = [523.25, 659.25, 783.99, 1046.5];
+          freqs.forEach((f, idx) => {
+            const start = ctx.currentTime + idx * 0.055;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(f, start);
+            gain.gain.setValueAtTime(0.075, start);
+            gain.gain.exponentialRampToValueAtTime(0.001, start + 0.13);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(start);
+            osc.stop(start + 0.14);
+          });
+        } catch (err) {}
+      },
+      playEarthHit() {
+        const ctx = this.getContext();
+        if (!ctx) return;
+        try {
+          const now = ctx.currentTime;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(165, now);
+          osc.frequency.exponentialRampToValueAtTime(52, now + 0.26);
+          gain.gain.setValueAtTime(0.13, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.26);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.27);
+        } catch (err) {}
+      }
+    };
+
+    // DOM 요소 참조
+    const dom = {
+      lobbyScreen: document.getElementById('lobbyScreen'),
+      gameScreen: document.getElementById('gameScreen'),
+      usernameInput: document.getElementById('usernameInput'),
+      previewUsernameBadge: document.getElementById('previewUsernameBadge'),
+      characterGrid: document.getElementById('characterGrid'),
+      startGameBtn: document.getElementById('startGameBtn'),
+      lobbyExportCsvBtn: document.getElementById('lobbyExportCsvBtn'),
+      clearScoresBtn: document.getElementById('clearScoresBtn'),
+      scoreboardList: document.getElementById('scoreboardList'),
+
+      topMainBtn: document.getElementById('topMainBtn'),
+      gameMainBtn: document.getElementById('gameMainBtn'),
+      gameOverMainBtn: document.getElementById('gameOverMainBtn'),
+      restartGameBtn: document.getElementById('restartGameBtn'),
+      autoFireToggleBtn: document.getElementById('autoFireToggleBtn'),
+      mobileFireBtn: document.getElementById('mobileFireBtn'),
+      soundToggleBtn: document.getElementById('soundToggleBtn'),
+      soundOnIcon: document.getElementById('soundOnIcon'),
+      soundOffIcon: document.getElementById('soundOffIcon'),
+
+      hudPlayerName: document.getElementById('hudPlayerName'),
+      hudShipName: document.getElementById('hudShipName'),
+      hudScore: document.getElementById('hudScore'),
+      hudDestroyed: document.getElementById('hudDestroyed'),
+      hudLevel: document.getElementById('hudLevel'),
+      hudEarthHits: document.getElementById('hudEarthHits'),
+      levelUpBanner: document.getElementById('levelUpBanner'),
+
+      gameOverOverlay: document.getElementById('gameOverOverlay'),
+      gameOverReasonText: document.getElementById('gameOverReasonText'),
+      goPlayerName: document.getElementById('goPlayerName'),
+      goShipName: document.getElementById('goShipName'),
+      goScore: document.getElementById('goScore'),
+      goDestroyed: document.getElementById('goDestroyed'),
+      goEarthHits: document.getElementById('goEarthHits'),
+      goLevel: document.getElementById('goLevel'),
+      saveStatusBox: document.getElementById('saveStatusBox'),
+      saveStatusTitle: document.getElementById('saveStatusTitle'),
+      saveStatusDetail: document.getElementById('saveStatusDetail'),
+
+      openRecordsModalTopBtn: document.getElementById('openRecordsModalTopBtn'),
+      openRecordsModalAsideBtn: document.getElementById('openRecordsModalAsideBtn'),
+      recordsModal: document.getElementById('recordsModal'),
+      closeRecordsModalBtn: document.getElementById('closeRecordsModalBtn'),
+      closeRecordsModalFooterBtn: document.getElementById('closeRecordsModalFooterBtn'),
+      modalDownloadCsvBtn: document.getElementById('modalDownloadCsvBtn'),
+      allScoresTableBody: document.getElementById('allScoresTableBody'),
+
+      openSheetsModalTopBtn: document.getElementById('openSheetsModalTopBtn'),
+      lobbySheetsSettingsBtn: document.getElementById('lobbySheetsSettingsBtn'),
+      topSheetsBadge: document.getElementById('topSheetsBadge'),
+      sheetsModal: document.getElementById('sheetsModal'),
+      closeSheetsModalBtn: document.getElementById('closeSheetsModalBtn'),
+      closeSheetsModalFooterBtn: document.getElementById('closeSheetsModalFooterBtn'),
+      sheetsWebAppUrlInput: document.getElementById('sheetsWebAppUrlInput'),
+      saveSheetsUrlBtn: document.getElementById('saveSheetsUrlBtn'),
+      testSheetsUrlBtn: document.getElementById('testSheetsUrlBtn'),
+      resetSheetsUrlBtn: document.getElementById('resetSheetsUrlBtn'),
+      sheetsUrlStatusText: document.getElementById('sheetsUrlStatusText'),
+      copyCodeGsBtn: document.getElementById('copyCodeGsBtn'),
+      codeGsPreview: document.getElementById('codeGsPreview'),
+
+      toastMessage: document.getElementById('toastMessage'),
+      canvas: document.getElementById('gameCanvas')
+    };
+
+    const ctx = dom.canvas.getContext('2d');
+
+    // HTML 이스케이프 유틸리티 (XSS 및 태그 깨짐 방지)
+    function escapeHtml(str) {
+      return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // 토스트 알림 표시
+    function showToast(message) {
+      if (!dom.toastMessage) return;
+      dom.toastMessage.textContent = message;
+      dom.toastMessage.classList.remove('opacity-0');
+      dom.toastMessage.classList.add('opacity-100');
+      clearTimeout(showToast._timer);
+      showToast._timer = setTimeout(() => {
+        dom.toastMessage.classList.remove('opacity-100');
+        dom.toastMessage.classList.add('opacity-0');
+      }, 2400);
+    }
+
+    // 현재 활성 사용자명 반환
+    function getActiveUsername() {
+      const raw = (state.username || '').trim();
+      return raw || '플레이어';
+    }
+
+    // 현재 선택된 전투기 캐릭터 객체 반환
+    function getSelectedCharacter() {
+      return CHARACTERS.find((c) => c.id === state.selectedCharacterId) || CHARACTERS[0];
+    }
+
+    // 사용자명 입력값 동기화 및 프리뷰 갱신
+    function updateUsernamePreview() {
+      state.username = (dom.usernameInput.value || '').slice(0, 16);
+      safeStorageSet(STORAGE_KEYS.USERNAME, state.username);
+      if (dom.previewUsernameBadge) {
+        dom.previewUsernameBadge.textContent = getActiveUsername();
+      }
+    }
+
+    // 사운드 아이콘 버튼 상태 동기화
+    function updateSoundButtonUI() {
+      if (!dom.soundOnIcon || !dom.soundOffIcon) return;
+      if (state.soundMuted) {
+        dom.soundOnIcon.classList.add('hidden');
+        dom.soundOffIcon.classList.remove('hidden');
+      } else {
+        dom.soundOnIcon.classList.remove('hidden');
+        dom.soundOffIcon.classList.add('hidden');
+      }
+    }
+
+    function updateSheetsStatusUI() {
+      const hasUrl = Boolean((state.sheetsWebAppUrl || '').trim());
+      if (dom.topSheetsBadge) {
+        dom.topSheetsBadge.textContent = hasUrl ? '연동됨' : '미설정';
+        dom.topSheetsBadge.className = hasUrl
+          ? 'text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/40'
+          : 'text-[10px] px-1.5 py-0.5 rounded-full bg-slate-900/90 text-slate-300 border border-slate-700';
+      }
+      if (dom.sheetsUrlStatusText) {
+        dom.sheetsUrlStatusText.textContent = hasUrl ? '현재 상태: 웹 앱 URL 저장됨' : '현재 상태: 미설정';
+        dom.sheetsUrlStatusText.className = hasUrl
+          ? 'text-xs font-bold text-emerald-300 ml-auto'
+          : 'text-xs text-slate-400 ml-auto';
+      }
+    }
+
+    function sendScoreToGoogleSheets(payload) {
+      const url = (state.sheetsWebAppUrl || '').trim();
+      if (!url) return false;
+      try {
+        fetch(url, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload)
+        }).catch(() => {});
+        return true;
+      } catch (err) {
+        return false;
+      }
+    }
+
+    function updateAutoFireButtonUI() {
+      if (state.autoFire) {
+        dom.autoFireToggleBtn.textContent = '자동사격: ON';
+        dom.autoFireToggleBtn.className =
+          'action-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-sky-500/20 text-sky-300 border border-sky-400/50 cursor-pointer';
+      } else {
+        dom.autoFireToggleBtn.textContent = '자동사격: OFF';
+        dom.autoFireToggleBtn.className =
+          'action-btn px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700 cursor-pointer';
+      }
+    }
+
+    // 캐릭터 미리보기 SVG 생성 (각 기체별 고유 모양/색상)
+    function renderShipSvg(charObj) {
+      if (charObj.shapeType === 'arrow') {
+        return `
+          <svg viewBox="0 0 64 64" class="w-12 h-12" aria-hidden="true">
+            <polygon points="32,6 46,48 32,39 18,48" fill="${charObj.color}" />
+            <polygon points="32,16 54,44 32,36 10,44" fill="${charObj.wingColor}" opacity="0.85" />
+            <ellipse cx="32" cy="26" rx="4" ry="8" fill="#0f172a" />
+          </svg>
+        `;
+      }
+      if (charObj.shapeType === 'twinwing') {
+        return `
+          <svg viewBox="0 0 64 64" class="w-12 h-12" aria-hidden="true">
+            <rect x="14" y="16" width="6" height="28" rx="2" fill="${charObj.wingColor}" />
+            <rect x="44" y="16" width="6" height="28" rx="2" fill="${charObj.wingColor}" />
+            <polygon points="32,8 45,46 32,38 19,46" fill="${charObj.color}" />
+            <ellipse cx="32" cy="25" rx="5" ry="7" fill="#0f172a" />
+          </svg>
+        `;
+      }
+      return `
+        <svg viewBox="0 0 64 64" class="w-12 h-12" aria-hidden="true">
+          <polygon points="32,8 52,46 32,37 12,46" fill="${charObj.wingColor}" />
+          <polygon points="32,7 43,45 32,38 21,45" fill="${charObj.color}" />
+          <ellipse cx="32" cy="24" rx="4.5" ry="7.5" fill="#0f172a" />
+        </svg>
+      `;
+    }
+
+    function renderCharacterCards() {
+      dom.characterGrid.innerHTML = '';
+      CHARACTERS.forEach((charObj) => {
+        const selected = charObj.id === state.selectedCharacterId;
+        const speedBar = Math.min(100, Math.round((charObj.moveSpeed / 520) * 100));
+        const rateBar = Math.min(100, Math.round((0.28 / charObj.fireInterval) * 55));
+
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = `action-btn text-left p-4 rounded-2xl border transition cursor-pointer flex flex-col justify-between gap-3 ${
+          selected
+            ? 'bg-slate-800/95 border-sky-400 ring-2 ring-sky-400/30'
+            : 'bg-slate-950/75 border-slate-800 hover:border-slate-600'
+        }`;
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between gap-2 mb-2">
+              <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-900 text-slate-300 border border-slate-700">
+                ${escapeHtml(charObj.badge)}
+              </span>
+              ${selected ? '<span class="text-[11px] font-extrabold text-sky-300">선택됨</span>' : ''}
+            </div>
+            <div class="flex items-center gap-3">
+              <div class="w-14 h-14 rounded-2xl bg-slate-900/90 border border-slate-800 flex items-center justify-center shrink-0">
+                ${renderShipSvg(charObj)}
+              </div>
+              <div>
+                <div class="text-base font-extrabold text-white">${escapeHtml(charObj.name)}</div>
+                <div class="text-[11px] text-slate-400 mt-0.5">
+                  ${charObj.spread === 'twin' ? '쌍발 동시 사격' : '단일 고속 미사일'}
+                </div>
+              </div>
+            </div>
+            <p class="text-xs text-slate-300 mt-2.5 leading-relaxed">${escapeHtml(charObj.desc)}</p>
+          </div>
+          <div class="space-y-1.5 pt-1 text-[11px]">
+            <div>
+              <div class="flex justify-between text-slate-400 mb-0.5"><span>이동속도</span><span class="text-slate-200 font-semibold">${charObj.moveSpeed}</span></div>
+              <div class="h-1.5 rounded-full bg-slate-800 overflow-hidden"><div class="h-full rounded-full" style="width:${speedBar}%; background:${charObj.color}"></div></div>
+            </div>
+            <div>
+              <div class="flex justify-between text-slate-400 mb-0.5"><span>연사력</span><span class="text-slate-200 font-semibold">${(1 / charObj.fireInterval).toFixed(1)}발/초</span></div>
+              <div class="h-1.5 rounded-full bg-slate-800 overflow-hidden"><div class="h-full rounded-full" style="width:${rateBar}%; background:${charObj.color}"></div></div>
+            </div>
+          </div>
+        `;
+
+        card.addEventListener('click', () => {
+          state.selectedCharacterId = charObj.id;
+          safeStorageSet(STORAGE_KEYS.CHARACTER, charObj.id);
+          renderCharacterCards();
+          SoundFX.getContext();
+        });
+
+        dom.characterGrid.appendChild(card);
+      });
+    }
+
+    // 점수에 따른 난이도 계산 (점수가 높을수록 암석 생성 빈도 및 이동 속도 증가)
+    function getDifficulty(score) {
+      const level = Math.min(15, Math.floor(score / 100) + 1);
+      let label = '보통';
+      if (level >= 9) label = '극한';
+      else if (level >= 6) label = '어려움';
+      else if (level >= 3) label = '상승';
+
+      const spawnInterval = Math.max(0.24, 1.05 - (level - 1) * 0.065);
+      const speedMultiplier = 1 + (level - 1) * 0.14;
+      return { level, label, spawnInterval, speedMultiplier };
+    }
+
+    function updateHUD() {
+      const diff = getDifficulty(state.score);
+      state.level = diff.level;
+
+      dom.hudPlayerName.textContent = getActiveUsername();
+      dom.hudShipName.textContent = getSelectedCharacter().name;
+      dom.hudScore.textContent = state.score.toLocaleString('ko-KR');
+      dom.hudDestroyed.textContent = `${state.destroyedCount}개`;
+      dom.hudLevel.textContent = `LV.${diff.level} (${diff.label})`;
+
+      dom.hudEarthHits.innerHTML = '';
+      for (let i = 0; i < state.maxEarthHits; i++) {
+        const hit = i < state.earthHits;
+        const el = document.createElement('span');
+        el.className = `inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-extrabold border ${
+          hit
+            ? 'bg-rose-500/25 border-rose-500 text-rose-300'
+            : 'bg-sky-500/20 border-sky-400/60 text-sky-200'
+        }`;
+        el.textContent = hit ? '✕' : '🌍';
+        dom.hudEarthHits.appendChild(el);
+      }
+    }
+
+    // 기록 관리 (localStorage 자동 저장, 한 판당 1회)
+    function getSavedScores() {
+      const raw = safeStorageGet(STORAGE_KEYS.SCORES, '[]');
+      try {
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (err) {
+        return [];
+      }
+    }
+
+    function recordGameResultOnce(reason) {
+      if (state.runSaved) return null;
+      state.runSaved = true;
+
+      const ship = getSelectedCharacter();
+      const entry = {
+        playedAt: new Date().toLocaleString('ko-KR'),
+        timestamp: new Date().toISOString(),
+        username: getActiveUsername(),
+        character: ship.name,
+        score: state.score,
+        destroyed: state.destroyedCount,
+        earthHits: state.earthHits,
+        level: `LV.${state.level}`,
+        reason
+      };
+
+      const existing = getSavedScores();
+      existing.unshift(entry);
+      safeStorageSet(STORAGE_KEYS.SCORES, JSON.stringify(existing.slice(0, 200)));
+
+      sendScoreToGoogleSheets({
+        timestamp: entry.timestamp,
+        username: entry.username,
+        character: entry.character,
+        score: entry.score,
+        destroyedCount: entry.destroyed,
+        earthHits: entry.earthHits,
+        reason: entry.reason
+      });
+
+      renderScoreboard();
+      renderRecordsTable();
+      return entry;
+    }
+
+    function renderScoreboard() {
+      const scores = getSavedScores();
+      dom.scoreboardList.innerHTML = '';
+
+      if (scores.length === 0) {
+        dom.scoreboardList.innerHTML = `
+          <div class="text-center py-8 px-4 rounded-2xl bg-slate-950/60 border border-slate-800/80 text-xs text-slate-400">
+            아직 저장된 성적이 없습니다.<br/>게임을 플레이하면 브라우저에 자동 저장됩니다.
+          </div>
+        `;
+        return;
+      }
+
+      const topList = [...scores].sort((a, b) => b.score - a.score).slice(0, 12);
+      topList.forEach((item, idx) => {
+        const medal =
+          idx === 0
+            ? 'bg-amber-400/20 text-amber-300 border-amber-400/40'
+            : idx === 1
+            ? 'bg-slate-300/15 text-slate-200 border-slate-400/30'
+            : idx === 2
+            ? 'bg-orange-500/15 text-orange-300 border-orange-500/30'
+            : 'bg-slate-900 text-slate-400 border-slate-800';
+
+        const card = document.createElement('div');
+        card.className = 'p-3 rounded-2xl bg-slate-950/75 border border-slate-800/90 flex items-center justify-between gap-3';
+        card.innerHTML = `
+          <div class="flex items-center gap-2.5 min-w-0">
+            <span class="w-6 h-6 rounded-lg border text-xs font-black flex items-center justify-center shrink-0 ${medal}">${idx + 1}</span>
+            <div class="min-w-0">
+              <div class="text-xs sm:text-sm font-bold text-white truncate">
+                ${escapeHtml(item.username)}
+                <span class="text-[11px] font-normal text-indigo-300">· ${escapeHtml(item.character)}</span>
+              </div>
+              <div class="text-[10px] text-slate-400 truncate">
+                암석 ${Number(item.destroyed || 0)}개 · 지구피격 ${Number(item.earthHits || 0)}/3 · ${escapeHtml(item.reason)}
+              </div>
+            </div>
+          </div>
+          <div class="text-right shrink-0">
+            <div class="text-sm font-black text-amber-300 tabular-nums">${Number(item.score || 0).toLocaleString('ko-KR')}</div>
+            <div class="text-[10px] text-slate-500">${escapeHtml(item.playedAt)}</div>
+          </div>
+        `;
+        dom.scoreboardList.appendChild(card);
+      });
+    }
+
+    function renderRecordsTable() {
+      const scores = getSavedScores();
+      if (scores.length === 0) {
+        dom.allScoresTableBody.innerHTML = `
+          <tr><td colspan="7" class="py-8 text-center text-slate-500">저장된 성적 기록이 없습니다.</td></tr>
+        `;
+        return;
+      }
+
+      dom.allScoresTableBody.innerHTML = scores
+        .map(
+          (item) => `
+        <tr>
+          <td class="py-2 pr-2 text-slate-400 whitespace-nowrap">${escapeHtml(item.playedAt)}</td>
+          <td class="py-2 px-2 font-bold text-white">${escapeHtml(item.username)}</td>
+          <td class="py-2 px-2 text-indigo-300">${escapeHtml(item.character)}</td>
+          <td class="py-2 px-2 text-right font-black text-amber-300 tabular-nums">${Number(item.score || 0).toLocaleString('ko-KR')}</td>
+          <td class="py-2 px-2 text-right text-emerald-300 tabular-nums">${Number(item.destroyed || 0)}개</td>
+          <td class="py-2 px-2 text-right text-rose-300 tabular-nums">${Number(item.earthHits || 0)} / 3</td>
+          <td class="py-2 pl-2 text-slate-300">${escapeHtml(item.reason)}</td>
+        </tr>
+      `
+        )
+        .join('');
+    }
+
+    function escapeCsv(val) {
+      const str = String(val ?? '');
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+
+    function downloadCsvForGoogleSheets() {
+      const scores = getSavedScores();
+      if (scores.length === 0) {
+        showToast('내보낼 성적 기록이 없습니다. 먼저 게임을 플레이해 보세요!');
+        return;
+      }
+
+      const headers = ['기록 시각', '사용자명', '캐릭터', '점수', '파괴한 암석', '지구 피격 횟수', '종료 사유'];
+      const lines = [
+        headers.map(escapeCsv).join(','),
+        ...scores.map((item) =>
+          [
+            escapeCsv(item.playedAt),
+            escapeCsv(item.username),
+            escapeCsv(item.character),
+            escapeCsv(item.score),
+            escapeCsv(item.destroyed),
+            escapeCsv(item.earthHits),
+            escapeCsv(item.reason)
+          ].join(',')
+        )
+      ];
+
+      // 한글 깨짐 방지용 UTF-8 BOM(\uFEFF) 포함
+      const csvBlob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(csvBlob);
+      const a = document.createElement('a');
+      const today = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `지구방어_슈팅게임_성적기록_${today}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      showToast('UTF-8 BOM이 포함된 CSV 파일을 다운로드했습니다.');
+    }
+
+    // 화면 전환 및 게임 시작/종료
+    function showLobbyScreen() {
+      state.screen = 'lobby';
+      state.isGameRunning = false;
+      state.isGameOver = false;
+      state.pointerActive = false;
+      state.keys.left = false;
+      state.keys.right = false;
+      state.keys.up = false;
+      state.keys.down = false;
+      state.keys.fire = false;
+
+      dom.gameOverOverlay.classList.add('hidden');
+      dom.gameScreen.classList.add('hidden');
+      dom.lobbyScreen.classList.remove('hidden');
+
+      updateUsernamePreview();
+      renderCharacterCards();
+      renderScoreboard();
+    }
+
+    function resizeCanvas() {
+      const container = dom.canvas.parentElement;
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+      state.canvasWidth = Math.max(300, rect.width);
+      state.canvasHeight = Math.max(420, rect.height);
+
+      dom.canvas.width = Math.floor(state.canvasWidth * dpr);
+      dom.canvas.height = Math.floor(state.canvasHeight * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      if (state.player) {
+        const earthHeight = Math.max(44, Math.min(62, state.canvasHeight * 0.09));
+        state.player.x = Math.max(
+          state.player.radius + 10,
+          Math.min(state.canvasWidth - state.player.radius - 10, state.player.x)
+        );
+        state.player.y = Math.max(
+          state.player.radius + 14,
+          Math.min(state.canvasHeight - earthHeight - state.player.radius - 8, state.player.y)
+        );
+      }
+    }
+
+    function initStars() {
+      state.stars = [];
+      const count = Math.min(130, Math.max(45, Math.floor((state.canvasWidth * state.canvasHeight) / 6500)));
+      for (let i = 0; i < count; i++) {
+        state.stars.push({
+          x: Math.random() * state.canvasWidth,
+          y: Math.random() * state.canvasHeight,
+          r: 0.7 + Math.random() * 1.8,
+          speed: 24 + Math.random() * 75,
+          alpha: 0.25 + Math.random() * 0.75
+        });
+      }
+    }
+
+    function startNewGame() {
+      updateUsernamePreview();
+      const ship = getSelectedCharacter();
+
+      state.screen = 'game';
+      state.isGameRunning = true;
+      state.isGameOver = false;
+      state.runSaved = false;
+
+      state.score = 0;
+      state.destroyedCount = 0;
+      state.earthHits = 0;
+      state.level = 1;
+      state.lastNotifiedLevel = 1;
+      state.gameOverReason = '';
+
+      state.bullets = [];
+      state.asteroids = [];
+      state.particles = [];
+      state.floatingTexts = [];
+      state.fireCooldown = 0;
+      state.spawnTimer = 0.45;
+      state.screenShake = 0;
+      state.pointerActive = false;
+
+      dom.lobbyScreen.classList.add('hidden');
+      dom.gameOverOverlay.classList.add('hidden');
+      dom.gameScreen.classList.remove('hidden');
+
+      resizeCanvas();
+      initStars();
+
+      const earthHeight = Math.max(44, Math.min(62, state.canvasHeight * 0.09));
+      state.player = {
+        x: state.canvasWidth * 0.5,
+        y: state.canvasHeight - earthHeight - 46,
+        radius: 18,
+        ship
+      };
+
+      updateHUD();
+      SoundFX.getContext();
+    }
+
+    function finishGame(reason) {
+      if (state.isGameOver) return;
+      state.isGameOver = true;
+      state.isGameRunning = false;
+      state.gameOverReason = reason;
+      state.screenShake = 14;
+
+      SoundFX.playEarthHit();
+      SoundFX.playExplosion(true);
+
+      if (state.player) {
+        spawnExplosion(state.player.x, state.player.y, state.player.ship.color, 36, true);
+      }
+
+      const savedEntry = recordGameResultOnce(reason);
+
+      dom.gameOverReasonText.textContent = `종료 사유: ${reason}`;
+      dom.goPlayerName.textContent = getActiveUsername();
+      dom.goShipName.textContent = getSelectedCharacter().name;
+      dom.goScore.textContent = state.score.toLocaleString('ko-KR');
+      dom.goDestroyed.textContent = `${state.destroyedCount}개`;
+      dom.goEarthHits.textContent = `${state.earthHits} / ${state.maxEarthHits}회`;
+      dom.goLevel.textContent = `LV.${state.level}`;
+
+      if (savedEntry) {
+        const sentToSheets = Boolean((state.sheetsWebAppUrl || '').trim());
+        dom.saveStatusBox.className =
+          'p-3.5 rounded-2xl border border-emerald-500/40 bg-emerald-950/30 text-xs flex items-start gap-2.5';
+        dom.saveStatusTitle.textContent = sentToSheets
+          ? '브라우저 자동 저장 및 구글시트 웹 앱 전송이 완료되었습니다 (한 판당 1회).'
+          : '브라우저에 성적이 자동 저장되었습니다 (한 판당 1회 기록).';
+        dom.saveStatusDetail.textContent = `${savedEntry.username} · ${savedEntry.score.toLocaleString('ko-KR')}점 · ${savedEntry.reason}`;
+      }
+
+      dom.gameOverOverlay.classList.remove('hidden');
+    }
+
+    // 엔티티 생성
+    function fireMissiles() {
+      if (!state.player || state.isGameOver) return;
+      const ship = state.player.ship;
+      const px = state.player.x;
+      const py = state.player.y - 18;
+
+      if (ship.spread === 'twin') {
+        state.bullets.push(
+          { x: px - 12, y: py + 4, vx: -15, vy: -ship.bulletSpeed, r: 4.5, color: ship.color, dmg: 1 },
+          { x: px + 12, y: py + 4, vx: 15, vy: -ship.bulletSpeed, r: 4.5, color: ship.color, dmg: 1 }
+        );
+      } else {
+        state.bullets.push({
+          x: px,
+          y: py,
+          vx: 0,
+          vy: -ship.bulletSpeed,
+          r: 4.5,
+          color: ship.color,
+          dmg: 1
+        });
+      }
+      SoundFX.playShoot();
+    }
+
+    function spawnAsteroid() {
+      const diff = getDifficulty(state.score);
+      const isLarge = diff.level >= 2 && Math.random() < Math.min(0.45, 0.14 + diff.level * 0.035);
+      const radius = isLarge ? 26 + Math.random() * 9 : 15 + Math.random() * 8;
+      const pad = radius + 16;
+      const x = pad + Math.random() * Math.max(40, state.canvasWidth - pad * 2);
+
+      const vy = (84 + Math.random() * 62) * diff.speedMultiplier;
+      const vx = (Math.random() - 0.5) * (24 + diff.level * 5);
+
+      const vertices = [];
+      const sides = 10;
+      for (let i = 0; i < sides; i++) {
+        const ang = (i / sides) * Math.PI * 2;
+        const factor = 0.78 + Math.random() * 0.32;
+        vertices.push({
+          x: Math.cos(ang) * radius * factor,
+          y: Math.sin(ang) * radius * factor
+        });
+      }
+
+      state.asteroids.push({
+        x,
+        y: -radius - 10,
+        vx,
+        vy,
+        radius,
+        hp: isLarge ? 2 : 1,
+        maxHp: isLarge ? 2 : 1,
+        points: isLarge ? 25 : 10,
+        rot: Math.random() * Math.PI * 2,
+        vRot: (Math.random() - 0.5) * 2.4,
+        vertices,
+        flash: 0
+      });
+    }
+
+    function spawnExplosion(x, y, color, count = 16, ring = false) {
+      for (let i = 0; i < count; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const spd = 45 + Math.random() * 200;
+        state.particles.push({
+          x,
+          y,
+          vx: Math.cos(ang) * spd,
+          vy: Math.sin(ang) * spd,
+          r: 1.8 + Math.random() * 3.2,
+          color: i % 3 === 0 ? '#fef08a' : i % 2 === 0 ? '#fb923c' : color,
+          life: 0.35 + Math.random() * 0.35,
+          maxLife: 0.7,
+          ring: false
+        });
+      }
+      if (ring) {
+        state.particles.push({
+          x,
+          y,
+          vx: 0,
+          vy: 0,
+          r: 6,
+          maxR: 66,
+          color,
+          life: 0.3,
+          maxLife: 0.3,
+          ring: true
+        });
+      }
+    }
+
+    function addFloatingText(x, y, text, color = '#fde047') {
+      state.floatingTexts.push({
+        x,
+        y,
+        vy: -40,
+        text,
+        color,
+        life: 0.75,
+        maxLife: 0.75
+      });
+    }
+
+    function showLevelUpBanner(lvl) {
+      dom.levelUpBanner.textContent = `⚡ 난이도 LV.${lvl} 상승! 암석이 더 많아지고 빨라집니다!`;
+      dom.levelUpBanner.classList.remove('opacity-0');
+      dom.levelUpBanner.classList.add('opacity-100');
+      SoundFX.playLevelUp();
+      clearTimeout(showLevelUpBanner._t);
+      showLevelUpBanner._t = setTimeout(() => {
+        dom.levelUpBanner.classList.remove('opacity-100');
+        dom.levelUpBanner.classList.add('opacity-0');
+      }, 2000);
+    }
+
+    // 프레임 업데이트
+    function update(dt) {
+      for (const s of state.stars) {
+        s.y += s.speed * dt;
+        if (s.y > state.canvasHeight) {
+          s.y = -4;
+          s.x = Math.random() * state.canvasWidth;
+        }
+      }
+
+      for (let i = state.particles.length - 1; i >= 0; i--) {
+        const pt = state.particles[i];
+        pt.life -= dt;
+        if (pt.life <= 0) {
+          state.particles.splice(i, 1);
+          continue;
+        }
+        if (pt.ring) {
+          const p = 1 - pt.life / pt.maxLife;
+          pt.r = 6 + (pt.maxR - 6) * p;
+        } else {
+          pt.x += pt.vx * dt;
+          pt.y += pt.vy * dt;
+          pt.vx *= 0.96;
+          pt.vy *= 0.96;
+        }
+      }
+
+      for (let i = state.floatingTexts.length - 1; i >= 0; i--) {
+        const ft = state.floatingTexts[i];
+        ft.life -= dt;
+        ft.y += ft.vy * dt;
+        if (ft.life <= 0) state.floatingTexts.splice(i, 1);
+      }
+
+      if (state.screenShake > 0) {
+        state.screenShake = Math.max(0, state.screenShake - dt * 35);
+      }
+
+      if (!state.isGameRunning || state.isGameOver || !state.player) return;
+
+      const earthHeight = Math.max(44, Math.min(62, state.canvasHeight * 0.09));
+      const earthTop = state.canvasHeight - earthHeight;
+      const p = state.player;
+
+      // 1) 2D 자유 이동 (방향키 / WASD / 포인터 드래그, 화면 밖 이탈 방지)
+      let dx = 0;
+      let dy = 0;
+      if (state.keys.left) dx -= 1;
+      if (state.keys.right) dx += 1;
+      if (state.keys.up) dy -= 1;
+      if (state.keys.down) dy += 1;
+
+      if (dx !== 0 || dy !== 0) {
+        const mag = Math.hypot(dx, dy);
+        p.x += (dx / mag) * p.ship.moveSpeed * dt;
+        p.y += (dy / mag) * p.ship.moveSpeed * dt;
+      } else if (state.pointerActive && state.pointerX !== null && state.pointerY !== null) {
+        const diffX = state.pointerX - p.x;
+        const diffY = state.pointerY - p.y;
+        const dist = Math.hypot(diffX, diffY);
+        const step = p.ship.moveSpeed * 1.15 * dt;
+        if (dist > 2) {
+          p.x += (diffX / dist) * Math.min(dist, step);
+          p.y += (diffY / dist) * Math.min(dist, step);
+        }
+      }
+
+      p.x = Math.max(p.radius + 10, Math.min(state.canvasWidth - p.radius - 10, p.x));
+      p.y = Math.max(p.radius + 14, Math.min(earthTop - p.radius - 8, p.y));
+
+      // 2) 미사일 발사
+      state.fireCooldown -= dt;
+      if ((state.autoFire || state.keys.fire) && state.fireCooldown <= 0) {
+        fireMissiles();
+        state.fireCooldown = p.ship.fireInterval;
+      }
+
+      // 3) 미사일 이동
+      for (let i = state.bullets.length - 1; i >= 0; i--) {
+        const b = state.bullets[i];
+        b.x += b.vx * dt;
+        b.y += b.vy * dt;
+        if (b.y < -20 || b.x < -20 || b.x > state.canvasWidth + 20) {
+          state.bullets.splice(i, 1);
+        }
+      }
+
+      // 4) 암석 스폰 (점수 기반 난이도 반영)
+      const diff = getDifficulty(state.score);
+      state.spawnTimer -= dt;
+      if (state.spawnTimer <= 0) {
+        spawnAsteroid();
+        state.spawnTimer = diff.spawnInterval * (0.82 + Math.random() * 0.36);
+      }
+
+      // 5) 암석 이동 및 충돌/지구 낙하 검사
+      for (let i = state.asteroids.length - 1; i >= 0; i--) {
+        const ast = state.asteroids[i];
+        ast.x += ast.vx * dt;
+        ast.y += ast.vy * dt;
+        ast.rot += ast.vRot * dt;
+        if (ast.flash > 0) ast.flash = Math.max(0, ast.flash - dt * 6);
+
+        if (ast.x - ast.radius < 8) {
+          ast.x = ast.radius + 8;
+          ast.vx = Math.abs(ast.vx);
+        } else if (ast.x + ast.radius > state.canvasWidth - 8) {
+          ast.x = state.canvasWidth - ast.radius - 8;
+          ast.vx = -Math.abs(ast.vx);
+        }
+
+        // 미사일 충돌 검사
+        let hitByBullet = false;
+        for (let j = state.bullets.length - 1; j >= 0; j--) {
+          const b = state.bullets[j];
+          if (Math.hypot(ast.x - b.x, ast.y - b.y) < ast.radius + b.r + 2) {
+            state.bullets.splice(j, 1);
+            ast.hp -= b.dmg;
+            ast.flash = 1;
+
+            if (ast.hp <= 0) {
+              hitByBullet = true;
+              state.score += ast.points;
+              state.destroyedCount += 1;
+              spawnExplosion(ast.x, ast.y, '#f59e0b', ast.maxHp > 1 ? 24 : 15, ast.maxHp > 1);
+              addFloatingText(ast.x, ast.y - 8, `+${ast.points}`, '#fde047');
+              SoundFX.playExplosion(ast.maxHp > 1);
+
+              const nextDiff = getDifficulty(state.score);
+              if (nextDiff.level > state.lastNotifiedLevel) {
+                state.lastNotifiedLevel = nextDiff.level;
+                showLevelUpBanner(nextDiff.level);
+              }
+              updateHUD();
+              state.asteroids.splice(i, 1);
+            } else {
+              spawnExplosion(b.x, b.y, '#fef08a', 5, false);
+              SoundFX.playShoot();
+            }
+            break;
+          }
+        }
+        if (hitByBullet) continue;
+
+        // 전투기 암석 충돌 검사 -> 즉시 게임 종료
+        if (Math.hypot(ast.x - p.x, ast.y - p.y) < ast.radius + p.radius * 0.78) {
+          finishGame('전투기 암석 충돌');
+          return;
+        }
+
+        // 지구 추락 검사 -> 3회 시 게임 종료
+        if (ast.y + ast.radius >= earthTop) {
+          state.asteroids.splice(i, 1);
+          state.earthHits += 1;
+          state.screenShake = 9;
+          spawnExplosion(ast.x, earthTop, '#38bdf8', 18, true);
+          addFloatingText(ast.x, earthTop - 14, `지구 피격 (${state.earthHits}/3)`, '#fb7185');
+          SoundFX.playEarthHit();
+          updateHUD();
+
+          if (state.earthHits >= state.maxEarthHits) {
+            finishGame('지구 3회 피격');
+            return;
+          }
+        }
+      }
+    }
+
+    // 캔버스 렌더링
+    function render() {
+      const w = state.canvasWidth;
+      const h = state.canvasHeight;
+      const earthHeight = Math.max(44, Math.min(62, h * 0.09));
+      const earthTop = h - earthHeight;
+
+      ctx.save();
+      if (state.screenShake > 0) {
+        ctx.translate(
+          (Math.random() - 0.5) * state.screenShake,
+          (Math.random() - 0.5) * state.screenShake
+        );
+      }
+
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, h);
+      skyGrad.addColorStop(0, '#030610');
+      skyGrad.addColorStop(0.75, '#081126');
+      skyGrad.addColorStop(1, '#0c1d3b');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, w, h);
+
+      for (const s of state.stars) {
+        ctx.fillStyle = `rgba(226, 232, 240, ${s.alpha})`;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 지구 방어선
+      const earthGrad = ctx.createLinearGradient(0, earthTop, 0, h);
+      earthGrad.addColorStop(0, '#0ea5e9');
+      earthGrad.addColorStop(0.35, '#0284c7');
+      earthGrad.addColorStop(1, '#082f49');
+      ctx.fillStyle = earthGrad;
+      ctx.fillRect(0, earthTop, w, earthHeight);
+
+      ctx.strokeStyle = state.earthHits >= 2 ? '#fb7185' : '#38bdf8';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(0, earthTop);
+      ctx.lineTo(w, earthTop);
+      ctx.stroke();
+
+      ctx.fillStyle = 'rgba(240, 249, 255, 0.9)';
+      ctx.font = 'bold 11px "Noto Sans KR", sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(`🌍 지구 방어선 · 지구 피격: ${state.earthHits} / ${state.maxEarthHits}회`, 14, earthTop + 20);
+
+      // 미사일
+      for (const b of state.bullets) {
+        ctx.save();
+        ctx.shadowColor = b.color;
+        ctx.shadowBlur = 10;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.roundRect(b.x - 2.5, b.y - 9, 5, 16, 3);
+        ctx.fill();
+        ctx.strokeStyle = b.color;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 암석
+      for (const ast of state.asteroids) {
+        ctx.save();
+        ctx.translate(ast.x, ast.y);
+        ctx.rotate(ast.rot);
+        ctx.beginPath();
+        ast.vertices.forEach((pt, idx) => {
+          if (idx === 0) ctx.moveTo(pt.x, pt.y);
+          else ctx.lineTo(pt.x, pt.y);
+        });
+        ctx.closePath();
+        ctx.fillStyle = ast.flash > 0.2 ? '#fef08a' : ast.maxHp > 1 ? '#57534e' : '#78716c';
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = ast.maxHp > 1 ? '#f59e0b' : '#a8a29e';
+        ctx.stroke();
+        ctx.restore();
+
+        if (ast.maxHp > 1 && ast.hp > 1) {
+          ctx.fillStyle = '#fde047';
+          ctx.font = 'bold 10px "Noto Sans KR", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('HP 2', ast.x, ast.y + 4);
+        }
+      }
+
+      // 전투기 (선택된 캐릭터 모양/색상 반영)
+      if (state.player && !state.isGameOver) {
+        const p = state.player;
+        const ship = p.ship;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+
+        const flame = 9 + Math.random() * 10;
+        ctx.fillStyle = '#fb923c';
+        ctx.beginPath();
+        ctx.moveTo(-6, 16);
+        ctx.lineTo(0, 16 + flame);
+        ctx.lineTo(6, 16);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.shadowColor = ship.color;
+        ctx.shadowBlur = 12;
+
+        if (ship.shapeType === 'twinwing') {
+          ctx.fillStyle = ship.wingColor;
+          ctx.fillRect(-20, -10, 5, 24);
+          ctx.fillRect(15, -10, 5, 24);
+          ctx.fillStyle = ship.color;
+          ctx.beginPath();
+          ctx.moveTo(0, -24);
+          ctx.lineTo(13, 14);
+          ctx.lineTo(0, 8);
+          ctx.lineTo(-13, 14);
+          ctx.closePath();
+          ctx.fill();
+        } else if (ship.shapeType === 'arrow') {
+          ctx.fillStyle = ship.wingColor;
+          ctx.beginPath();
+          ctx.moveTo(0, -14);
+          ctx.lineTo(25, 14);
+          ctx.lineTo(0, 7);
+          ctx.lineTo(-25, 14);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.fillStyle = ship.color;
+          ctx.beginPath();
+          ctx.moveTo(0, -26);
+          ctx.lineTo(10, 16);
+          ctx.lineTo(0, 9);
+          ctx.lineTo(-10, 16);
+          ctx.closePath();
+          ctx.fill();
+        } else {
+          ctx.fillStyle = ship.wingColor;
+          ctx.beginPath();
+          ctx.moveTo(0, -10);
+          ctx.lineTo(24, 15);
+          ctx.lineTo(0, 9);
+          ctx.lineTo(-24, 15);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.fillStyle = ship.color;
+          ctx.beginPath();
+          ctx.moveTo(0, -24);
+          ctx.lineTo(13, 14);
+          ctx.lineTo(0, 8);
+          ctx.lineTo(-13, 14);
+          ctx.closePath();
+          ctx.fill();
+        }
+
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.ellipse(0, -4, 4.5, 7.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // 폭발 파티클
+      for (const pt of state.particles) {
+        const alpha = Math.max(0, pt.life / pt.maxLife);
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        if (pt.ring) {
+          ctx.strokeStyle = pt.color;
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, pt.r, 0, Math.PI * 2);
+          ctx.stroke();
+        } else {
+          ctx.fillStyle = pt.color;
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, pt.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      // 플로팅 텍스트
+      for (const ft of state.floatingTexts) {
+        const alpha = Math.max(0, ft.life / ft.maxLife);
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = ft.color;
+        ctx.font = 'bold 13px "Noto Sans KR", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(ft.text, ft.x, ft.y);
+        ctx.restore();
+      }
+
+      ctx.restore();
+    }
+
+    // 단일 requestAnimationFrame 루프 (중복 실행 방지)
+    function loop(now) {
+      state.rafId = null;
+      const rawDt = (now - (state.lastFrameTime || now)) / 1000;
+      state.lastFrameTime = now;
+      const dt = Math.min(0.05, Math.max(0.001, rawDt));
+
+      if (state.screen === 'game') {
+        update(dt);
+        render();
+      }
+
+      state.rafId = window.requestAnimationFrame(loop);
+    }
+
+    function ensureLoopRunning() {
+      if (state.rafId === null) {
+        state.lastFrameTime = performance.now();
+        state.rafId = window.requestAnimationFrame(loop);
+      }
+    }
+
+    function openRecordsModal() {
+      renderRecordsTable();
+      dom.recordsModal.classList.remove('hidden');
+    }
+
+    function closeRecordsModal() {
+      dom.recordsModal.classList.add('hidden');
+    }
+
+    function openSheetsModal() {
+      dom.sheetsWebAppUrlInput.value = state.sheetsWebAppUrl || '';
+      dom.codeGsPreview.textContent = CODE_GS_TEMPLATE;
+      updateSheetsStatusUI();
+      dom.sheetsModal.classList.remove('hidden');
+    }
+
+    function closeSheetsModal() {
+      dom.sheetsModal.classList.add('hidden');
+    }
+
+    function copyTextFallback(text) {
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).catch(() => {});
+        }
+      } catch (err) {}
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        return true;
+      } catch (err) {
+        return false;
+      }
+    }
+
+    function bindEvents() {
+      dom.usernameInput.addEventListener('input', updateUsernamePreview);
+
+      dom.startGameBtn.addEventListener('click', startNewGame);
+      dom.restartGameBtn.addEventListener('click', startNewGame);
+
+      dom.topMainBtn.addEventListener('click', showLobbyScreen);
+      dom.gameMainBtn.addEventListener('click', showLobbyScreen);
+      dom.gameOverMainBtn.addEventListener('click', showLobbyScreen);
+
+      dom.autoFireToggleBtn.addEventListener('click', () => {
+        state.autoFire = !state.autoFire;
+        updateAutoFireButtonUI();
+        showToast(state.autoFire ? '자동사격이 켜졌습니다.' : '자동사격이 꺼졌습니다.');
+      });
+
+      dom.mobileFireBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        state.keys.fire = true;
+        if (state.isGameRunning && !state.isGameOver && state.fireCooldown <= 0) {
+          fireMissiles();
+          state.fireCooldown = getSelectedCharacter().fireInterval;
+        }
+      });
+      dom.mobileFireBtn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        state.keys.fire = false;
+      });
+
+      dom.soundToggleBtn.addEventListener('click', () => {
+        state.soundMuted = !state.soundMuted;
+        safeStorageSet(STORAGE_KEYS.MUTED, String(state.soundMuted));
+        updateSoundButtonUI();
+        if (!state.soundMuted) {
+          SoundFX.getContext();
+          SoundFX.playShoot();
+        }
+        showToast(state.soundMuted ? '사운드가 음소거되었습니다.' : '사운드가 켜졌습니다.');
+      });
+
+      dom.clearScoresBtn.addEventListener('click', () => {
+        safeStorageRemove(STORAGE_KEYS.SCORES);
+        renderScoreboard();
+        renderRecordsTable();
+        showToast('저장된 성적 기록이 삭제되었습니다.');
+      });
+
+      dom.openRecordsModalTopBtn.addEventListener('click', openRecordsModal);
+      dom.openRecordsModalAsideBtn.addEventListener('click', openRecordsModal);
+      dom.closeRecordsModalBtn.addEventListener('click', closeRecordsModal);
+      dom.closeRecordsModalFooterBtn.addEventListener('click', closeRecordsModal);
+      dom.recordsModal.addEventListener('click', (e) => {
+        if (e.target === dom.recordsModal) closeRecordsModal();
+      });
+
+      dom.lobbyExportCsvBtn.addEventListener('click', downloadCsvForGoogleSheets);
+      dom.modalDownloadCsvBtn.addEventListener('click', downloadCsvForGoogleSheets);
+
+      dom.openSheetsModalTopBtn.addEventListener('click', openSheetsModal);
+      dom.lobbySheetsSettingsBtn.addEventListener('click', openSheetsModal);
+      dom.closeSheetsModalBtn.addEventListener('click', closeSheetsModal);
+      dom.closeSheetsModalFooterBtn.addEventListener('click', closeSheetsModal);
+      dom.sheetsModal.addEventListener('click', (e) => {
+        if (e.target === dom.sheetsModal) closeSheetsModal();
+      });
+
+      dom.saveSheetsUrlBtn.addEventListener('click', () => {
+        const url = (dom.sheetsWebAppUrlInput.value || '').trim();
+        if (url && !/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec/.test(url)) {
+          showToast('올바른 구글시트 웹 앱 URL(https://script.google.com/macros/s/.../exec)을 입력해 주세요.');
+          return;
+        }
+        state.sheetsWebAppUrl = url;
+        safeStorageSet(STORAGE_KEYS.SHEETS_URL, url);
+        updateSheetsStatusUI();
+        showToast(url ? '구글시트 웹 앱 URL이 저장되었습니다.' : '구글시트 웹 앱 URL이 비워졌습니다.');
+      });
+
+      dom.testSheetsUrlBtn.addEventListener('click', () => {
+        const url = (dom.sheetsWebAppUrlInput.value || state.sheetsWebAppUrl || '').trim();
+        if (!url) {
+          showToast('먼저 구글시트 웹 앱 URL을 입력해 주세요.');
+          return;
+        }
+        state.sheetsWebAppUrl = url;
+        safeStorageSet(STORAGE_KEYS.SHEETS_URL, url);
+        updateSheetsStatusUI();
+        sendScoreToGoogleSheets({
+          timestamp: new Date().toISOString(),
+          username: getActiveUsername(),
+          character: getSelectedCharacter().name,
+          score: 0,
+          destroyedCount: 0,
+          earthHits: 0,
+          reason: '연결 테스트'
+        });
+        showToast('테스트 데이터를 전송했습니다. 구글시트에 새 행이 추가되었는지 확인해 주세요.');
+      });
+
+      dom.resetSheetsUrlBtn.addEventListener('click', () => {
+        state.sheetsWebAppUrl = '';
+        dom.sheetsWebAppUrlInput.value = '';
+        safeStorageRemove(STORAGE_KEYS.SHEETS_URL);
+        updateSheetsStatusUI();
+        showToast('구글시트 웹 앱 URL 설정이 초기화되었습니다.');
+      });
+
+      dom.copyCodeGsBtn.addEventListener('click', () => {
+        const ok = copyTextFallback(CODE_GS_TEMPLATE);
+        showToast(ok ? 'Code.gs 코드가 복사되었습니다.' : '코드 영역을 직접 선택해 복사해 주세요.');
+      });
+
+      // 키보드 조작 및 M 키 메인 복귀 (입력창 포커스 시 M 키 제외)
+      window.addEventListener('keydown', (e) => {
+        const active = document.activeElement;
+        const isTyping = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
+
+        if ((e.key === 'm' || e.key === 'M') && !isTyping) {
+          e.preventDefault();
+          if (state.screen !== 'lobby') {
+            showLobbyScreen();
+            showToast('메인 화면으로 이동했습니다.');
+          }
+          return;
+        }
+
+        if (state.screen !== 'game') return;
+
+        const k = e.key.toLowerCase();
+        if (e.key === 'ArrowLeft' || k === 'a') {
+          e.preventDefault();
+          state.keys.left = true;
+          state.pointerActive = false;
+        } else if (e.key === 'ArrowRight' || k === 'd') {
+          e.preventDefault();
+          state.keys.right = true;
+          state.pointerActive = false;
+        } else if (e.key === 'ArrowUp' || k === 'w') {
+          e.preventDefault();
+          state.keys.up = true;
+          state.pointerActive = false;
+        } else if (e.key === 'ArrowDown' || k === 's') {
+          e.preventDefault();
+          state.keys.down = true;
+          state.pointerActive = false;
+        } else if (e.code === 'Space') {
+          e.preventDefault();
+          state.keys.fire = true;
+        }
+      });
+
+      window.addEventListener('keyup', (e) => {
+        const k = e.key.toLowerCase();
+        if (e.key === 'ArrowLeft' || k === 'a') state.keys.left = false;
+        else if (e.key === 'ArrowRight' || k === 'd') state.keys.right = false;
+        else if (e.key === 'ArrowUp' || k === 'w') state.keys.up = false;
+        else if (e.key === 'ArrowDown' || k === 's') state.keys.down = false;
+        else if (e.code === 'Space') state.keys.fire = false;
+      });
+
+      function updatePointer(clientX, clientY) {
+        const rect = dom.canvas.getBoundingClientRect();
+        state.pointerX = clientX - rect.left;
+        state.pointerY = clientY - rect.top;
+      }
+
+      dom.canvas.addEventListener('pointerdown', (e) => {
+        if (!state.isGameRunning || state.isGameOver) return;
+        state.pointerActive = true;
+        updatePointer(e.clientX, e.clientY);
+        SoundFX.getContext();
+        if (!state.autoFire && state.fireCooldown <= 0) {
+          fireMissiles();
+          state.fireCooldown = getSelectedCharacter().fireInterval;
+        }
+      });
+
+      dom.canvas.addEventListener('pointermove', (e) => {
+        if (!state.pointerActive || !state.isGameRunning || state.isGameOver) return;
+        updatePointer(e.clientX, e.clientY);
+      });
+
+      window.addEventListener('pointerup', () => {
+        state.pointerActive = false;
+      });
+
+      window.addEventListener('resize', () => {
+        resizeCanvas();
+        initStars();
+      });
+    }
+
+    // 초기화 진입점
+    window.addEventListener('DOMContentLoaded', () => {
+      dom.usernameInput.value = state.username;
+      updateSoundButtonUI();
+      updateAutoFireButtonUI();
+      updateSheetsStatusUI();
+      bindEvents();
+      showLobbyScreen();
+      resizeCanvas();
+      initStars();
+      ensureLoopRunning();
+    });
+  </script>
+</body>
+</html>
